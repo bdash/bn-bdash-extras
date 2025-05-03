@@ -10,9 +10,6 @@ itertools = "0.13"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-[patch."https://github.com/Vector35/binaryninja-api.git"]
-binaryninja = { path = "../../crates/binaryninja-api/rust" }
-
 [profile.dev]
 panic = "abort"
 build-override.debug = true
