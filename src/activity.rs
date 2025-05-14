@@ -24,7 +24,7 @@
 
 #![allow(unused)]
 
-use binaryninja::string::BnStrCompatible;
+use serde_json::ser;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub struct Config<'a> {
@@ -52,15 +52,9 @@ impl<'a> Config<'a> {
         self.eligibility = eligibility;
         self
     }
-}
 
-unsafe impl BnStrCompatible for &Config<'_> {
-    type Result = <String as BnStrCompatible>::Result;
-
-    fn into_bytes_with_nul(self) -> Self::Result {
-        serde_json::to_string_pretty(self)
-            .expect("Unable to serialize Config to JSON")
-            .into_bytes_with_nul()
+    pub fn to_string(&self) -> String {
+        serde_json::to_string(self).expect("Failed to serialize config to JSON")
     }
 }
 
