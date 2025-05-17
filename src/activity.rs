@@ -1,7 +1,7 @@
 //! A type-safe representation of a workflow activity configuration
-//! 
-//! This can be passed in place of a JSON string when creating an [binaryninja::workflow::Activity].
-//! 
+//!
+//! This can be passed in place of a JSON string when creating an [`binaryninja::workflow::Activity`].
+//!
 //! ```no_run
 //! # use bn_bdash_extras::activity::*;
 //! # use binaryninja::workflow::{Activity, AnalysisContext, Workflow};
@@ -38,6 +38,7 @@ pub struct Config<'a> {
 }
 
 impl<'a> Config<'a> {
+    #[must_use]
     pub fn action(name: &'a str, title: &'a str, description: &'a str) -> Self {
         Self {
             name,
@@ -48,29 +49,34 @@ impl<'a> Config<'a> {
         }
     }
 
+    #[must_use]
     pub fn with_eligibility(mut self, eligibility: Eligibility) -> Self {
         self.eligibility = eligibility;
         self
     }
+}
 
-    pub fn to_string(&self) -> String {
-        serde_json::to_string(self).expect("Failed to serialize config to JSON")
+impl std::fmt::Display for Config<'_> {
+    /// Serializes the config to a JSON string.
+    ///
+    /// # Panics
+    ///
+    /// Panics if serialization to JSON fails.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = serde_json::to_string(self).expect("Failed to serialize config to JSON");
+        write!(f, "{s}")
     }
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum Role {
+    #[default]
     Action,
     Selector,
     Subflow,
     Task,
-}
-
-impl Default for Role {
-    fn default() -> Self {
-        Role::Action
-    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -91,6 +97,7 @@ pub struct Eligibility {
 }
 
 impl Eligibility {
+    #[must_use]
     pub fn auto() -> Self {
         Eligibility {
             auto: Some(Auto::new()),
@@ -102,6 +109,7 @@ impl Eligibility {
         }
     }
 
+    #[must_use]
     pub fn auto_with_default(value: bool) -> Self {
         Eligibility {
             auto: Some(Auto::new().default(value)),
@@ -113,17 +121,20 @@ impl Eligibility {
         }
     }
 
+    #[must_use]
     pub fn with_predicate<P: Into<Predicate>>(mut self, predicate: P) -> Self {
         self.predicates = vec![predicate.into()];
         self
     }
 
+    #[must_use]
     pub fn matching_any_predicate(mut self, predicates: &[Predicate]) -> Self {
         self.predicates = predicates.to_vec();
         self.logical_operator = Some(PredicateLogicalOperator::Or);
         self
     }
 
+    #[must_use]
     pub fn matching_all_predicates(mut self, predicates: &[Predicate]) -> Self {
         self.predicates = predicates.to_vec();
         self.logical_operator = Some(PredicateLogicalOperator::And);
@@ -144,10 +155,12 @@ pub struct Auto {
 }
 
 impl Auto {
+    #[must_use]
     pub fn new() -> Self {
         Self { default: None }
     }
 
+    #[must_use]
     pub fn default(mut self, value: bool) -> Self {
         self.default = Some(value);
         self
@@ -164,7 +177,7 @@ pub struct Predicate {
 
 impl Predicate {
     pub fn setting<I: ToString>(
-        identifier: I,
+        identifier: &I,
         operator: Operator,
         value: impl serde::Serialize,
     ) -> Self {
@@ -183,7 +196,7 @@ pub enum ViewType<'a> {
     NotIn(&'a [&'a str]),
 }
 
-impl<'a> From<ViewType<'a>> for Predicate {
+impl From<ViewType<'_>> for Predicate {
     fn from(predicate: ViewType) -> Self {
         match predicate {
             ViewType::In(value) => Predicate {
@@ -208,7 +221,7 @@ pub struct Setting {
 
 impl Setting {
     pub fn new(
-        identifier: impl ToString,
+        identifier: &impl ToString,
         operator: Operator,
         value: impl serde::Serialize,
     ) -> Self {
@@ -219,35 +232,35 @@ impl Setting {
         }
     }
 
-    pub fn eq(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn eq(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::Eq, value)
     }
 
-    pub fn ne(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn ne(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::Ne, value)
     }
 
-    pub fn lt(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn lt(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::Lt, value)
     }
 
-    pub fn lte(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn lte(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::Lte, value)
     }
 
-    pub fn gt(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn gt(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::Gt, value)
     }
 
-    pub fn gte(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn gte(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::Gte, value)
     }
 
-    pub fn in_(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn in_(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::In, value)
     }
 
-    pub fn not_in(identifier: impl ToString, value: impl serde::Serialize) -> Self {
+    pub fn not_in(identifier: &impl ToString, value: impl serde::Serialize) -> Self {
         Self::new(identifier, Operator::NotIn, value)
     }
 }

@@ -6,6 +6,8 @@
 //! This currently only supports the operations I've had a need to match against. It will need
 //! to be expanded as it is used for more things.
 
+use std::convert::Into;
+
 use binaryninja::{
     architecture::CoreRegister,
     low_level_il::{
@@ -92,7 +94,7 @@ where
                 };
                 Instruction::CallSsa(
                     operation.target().into(),
-                    params.param_exprs().into_iter().map(|x| x.into()).collect(),
+                    params.param_exprs().into_iter().map(Into::into).collect(),
                 )
             }
             Kind::TailCallSsa(operation) => {
@@ -104,7 +106,7 @@ where
                 };
                 Instruction::TailCallSsa(
                     operation.target().into(),
-                    params.param_exprs().into_iter().map(|x| x.into()).collect(),
+                    params.param_exprs().into_iter().map(Into::into).collect(),
                 )
             }
             Kind::Goto(operation) => Instruction::Goto(operation.target()),
