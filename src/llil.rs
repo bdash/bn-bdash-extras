@@ -8,20 +8,29 @@
 
 use std::convert::Into;
 
-use binaryninja::{
-    architecture::CoreRegister,
-    low_level_il::{
-        self,
-        expression::{ExpressionHandler, LowLevelILExpression, ValueExpr},
-        instruction::{InstructionHandler, LowLevelILInstruction},
-    },
+use binaryninja::low_level_il::{
+    LowLevelILRegisterKind, LowLevelILSSARegisterKind,
+    expression::{ExpressionHandler as _, LowLevelILExpression, LowLevelILExpressionKind},
+    instruction::{InstructionHandler as _, LowLevelILInstruction, LowLevelILInstructionKind},
 };
+
+mod bn {
+    pub use binaryninja::{
+        architecture::CoreRegister,
+        low_level_il::{
+            expression::{ExpressionHandler, ValueExpr},
+            function::{FunctionForm, FunctionMutability},
+            instruction::InstructionHandler,
+            operation::{BinaryOp, Operation},
+        },
+    };
+}
 
 #[derive(Debug)]
 pub enum Instruction<'a, M, F>
 where
-    M: low_level_il::function::FunctionMutability,
-    F: low_level_il::function::FunctionForm,
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
 {
     If(
         Expression<'a, M, F>,
@@ -29,16 +38,16 @@ where
         LowLevelILInstruction<'a, M, F>,
     ),
     SetReg(
-        low_level_il::LowLevelILRegisterKind<CoreRegister>,
+        LowLevelILRegisterKind<bn::CoreRegister>,
         Expression<'a, M, F>,
     ),
     SetRegSsa(
-        low_level_il::LowLevelILSSARegisterKind<CoreRegister>,
+        LowLevelILSSARegisterKind<bn::CoreRegister>,
         Expression<'a, M, F>,
     ),
     RegPhi(
-        low_level_il::LowLevelILSSARegisterKind<CoreRegister>,
-        Vec<low_level_il::LowLevelILSSARegisterKind<CoreRegister>>,
+        LowLevelILSSARegisterKind<bn::CoreRegister>,
+        Vec<LowLevelILSSARegisterKind<bn::CoreRegister>>,
     ),
     Call(Expression<'a, M, F>),
     TailCall(Expression<'a, M, F>),
@@ -52,14 +61,14 @@ where
 #[derive(Debug)]
 pub struct BinaryExpression<'a, M, F>(pub Expression<'a, M, F>, pub Expression<'a, M, F>)
 where
-    M: low_level_il::function::FunctionMutability,
-    F: low_level_il::function::FunctionForm;
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm;
 
 #[derive(Debug)]
 pub enum Expression<'a, M, F>
 where
-    M: low_level_il::function::FunctionMutability,
-    F: low_level_il::function::FunctionForm,
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
 {
     Add(Box<BinaryExpression<'a, M, F>>),
     Sub(Box<BinaryExpression<'a, M, F>>),
@@ -68,24 +77,23 @@ where
     Lsl(Box<BinaryExpression<'a, M, F>>),
     Lsr(Box<BinaryExpression<'a, M, F>>),
     CmpE(Box<BinaryExpression<'a, M, F>>),
-    Reg(low_level_il::LowLevelILRegisterKind<CoreRegister>),
-    RegSsa(low_level_il::LowLevelILSSARegisterKind<CoreRegister>),
+    Reg(LowLevelILRegisterKind<bn::CoreRegister>),
+    RegSsa(LowLevelILSSARegisterKind<bn::CoreRegister>),
     Const(u64),
     ConstPtr(u64),
-    Unknown(LowLevelILExpression<'a, M, F, ValueExpr>),
+    Unknown(LowLevelILExpression<'a, M, F, bn::ValueExpr>),
 }
 
 impl<'a, 'b, M, F> From<&'b LowLevelILInstruction<'a, M, F>> for Instruction<'b, M, F>
 where
-    M: low_level_il::function::FunctionMutability,
-    F: low_level_il::function::FunctionForm,
-    LowLevelILInstruction<'a, M, F>: low_level_il::instruction::InstructionHandler<'a, M, F>,
-    LowLevelILExpression<'a, M, F, ValueExpr>:
-        low_level_il::expression::ExpressionHandler<'a, M, F>,
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILInstruction<'a, M, F>: bn::InstructionHandler<'a, M, F>,
+    LowLevelILExpression<'a, M, F, bn::ValueExpr>: bn::ExpressionHandler<'a, M, F>,
 {
     fn from(instr: &'b LowLevelILInstruction<'a, M, F>) -> Self {
-        use low_level_il::expression::LowLevelILExpressionKind as ExpressionKind;
-        use low_level_il::instruction::LowLevelILInstructionKind as Kind;
+        use LowLevelILExpressionKind as ExpressionKind;
+        use LowLevelILInstructionKind as Kind;
         match instr.kind() {
             Kind::If(operation) => Self::If(
                 operation.condition().into(),
@@ -135,15 +143,14 @@ where
     }
 }
 
-impl<'a, M, F> From<LowLevelILExpression<'a, M, F, ValueExpr>> for Expression<'a, M, F>
+impl<'a, M, F> From<LowLevelILExpression<'a, M, F, bn::ValueExpr>> for Expression<'a, M, F>
 where
-    M: low_level_il::function::FunctionMutability,
-    F: low_level_il::function::FunctionForm,
-    LowLevelILExpression<'a, M, F, ValueExpr>:
-        low_level_il::expression::ExpressionHandler<'a, M, F>,
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILExpression<'a, M, F, bn::ValueExpr>: bn::ExpressionHandler<'a, M, F>,
 {
-    fn from(expr: LowLevelILExpression<'a, M, F, ValueExpr>) -> Self {
-        use low_level_il::expression::LowLevelILExpressionKind as Kind;
+    fn from(expr: LowLevelILExpression<'a, M, F, bn::ValueExpr>) -> Self {
+        use LowLevelILExpressionKind as Kind;
         match expr.kind() {
             Kind::Add(operation) => Expression::Add(Box::new(BinaryExpression::from(operation))),
             Kind::Sub(operation) => Expression::Sub(Box::new(BinaryExpression::from(operation))),
@@ -164,16 +171,13 @@ where
     }
 }
 
-impl<'a, M, F> From<low_level_il::operation::Operation<'a, M, F, low_level_il::operation::BinaryOp>>
-    for BinaryExpression<'a, M, F>
+impl<'a, M, F> From<bn::Operation<'a, M, F, bn::BinaryOp>> for BinaryExpression<'a, M, F>
 where
-    M: low_level_il::function::FunctionMutability,
-    F: low_level_il::function::FunctionForm,
-    LowLevelILExpression<'a, M, F, ValueExpr>: ExpressionHandler<'a, M, F>,
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILExpression<'a, M, F, bn::ValueExpr>: bn::ExpressionHandler<'a, M, F>,
 {
-    fn from(
-        operation: low_level_il::operation::Operation<'a, M, F, low_level_il::operation::BinaryOp>,
-    ) -> Self {
+    fn from(operation: bn::Operation<'a, M, F, bn::BinaryOp>) -> Self {
         Self(operation.left().into(), operation.right().into())
     }
 }
