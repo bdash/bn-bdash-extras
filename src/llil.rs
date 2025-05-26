@@ -27,71 +27,136 @@ mod bn {
 }
 
 #[derive(Debug)]
-pub enum Instruction<'a, M, F>
+pub struct Instruction<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+{
+    pub kind: InstructionKind<'func, M, F>,
+    pub inner: LowLevelILInstruction<'func, M, F>,
+}
+
+#[derive(Debug)]
+pub enum InstructionKind<'func, M, F>
 where
     M: bn::FunctionMutability,
     F: bn::FunctionForm,
 {
     If(
-        Expression<'a, M, F>,
-        LowLevelILInstruction<'a, M, F>,
-        LowLevelILInstruction<'a, M, F>,
+        Expression<'func, M, F>,
+        LowLevelILInstruction<'func, M, F>,
+        LowLevelILInstruction<'func, M, F>,
     ),
     SetReg(
         LowLevelILRegisterKind<bn::CoreRegister>,
-        Expression<'a, M, F>,
+        Expression<'func, M, F>,
     ),
     SetRegSsa(
         LowLevelILSSARegisterKind<bn::CoreRegister>,
-        Expression<'a, M, F>,
+        Expression<'func, M, F>,
     ),
     RegPhi(
         LowLevelILSSARegisterKind<bn::CoreRegister>,
         Vec<LowLevelILSSARegisterKind<bn::CoreRegister>>,
     ),
-    Call(Expression<'a, M, F>),
-    TailCall(Expression<'a, M, F>),
-    CallSsa(Expression<'a, M, F>, Vec<Expression<'a, M, F>>),
-    TailCallSsa(Expression<'a, M, F>, Vec<Expression<'a, M, F>>),
-    Goto(LowLevelILInstruction<'a, M, F>),
-    Jump(Expression<'a, M, F>),
-    Unknown(&'a LowLevelILInstruction<'a, M, F>),
+    Call(Expression<'func, M, F>),
+    TailCall(Expression<'func, M, F>),
+    CallSsa(Expression<'func, M, F>, Vec<Expression<'func, M, F>>),
+    TailCallSsa(Expression<'func, M, F>, Vec<Expression<'func, M, F>>),
+    Goto(LowLevelILInstruction<'func, M, F>),
+    Jump(Expression<'func, M, F>),
+    Unknown(LowLevelILInstruction<'func, M, F>),
 }
 
 #[derive(Debug)]
-pub struct BinaryExpression<'a, M, F>(pub Expression<'a, M, F>, pub Expression<'a, M, F>)
+pub struct BinaryExpression<'func, M, F>(pub Expression<'func, M, F>, pub Expression<'func, M, F>)
 where
     M: bn::FunctionMutability,
     F: bn::FunctionForm;
 
-#[derive(Debug)]
-pub enum Expression<'a, M, F>
+impl<'func, M, F> BinaryExpression<'func, M, F>
 where
     M: bn::FunctionMutability,
     F: bn::FunctionForm,
 {
-    Add(Box<BinaryExpression<'a, M, F>>),
-    Sub(Box<BinaryExpression<'a, M, F>>),
-    And(Box<BinaryExpression<'a, M, F>>),
-    Xor(Box<BinaryExpression<'a, M, F>>),
-    Lsl(Box<BinaryExpression<'a, M, F>>),
-    Lsr(Box<BinaryExpression<'a, M, F>>),
-    CmpE(Box<BinaryExpression<'a, M, F>>),
+    pub fn kinds(&self) -> (&ExpressionKind<'func, M, F>, &ExpressionKind<'func, M, F>) {
+        (&self.0.kind, &self.1.kind)
+    }
+
+    pub fn inners(&self) -> (
+        LowLevelILExpression<'func, M, F, bn::ValueExpr>,
+        LowLevelILExpression<'func, M, F, bn::ValueExpr>,
+    ) {
+        (self.0.inner, self.1.inner)
+    }
+}
+
+#[derive(Debug)]
+pub struct Expression<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+{
+    pub inner: LowLevelILExpression<'func, M, F, bn::ValueExpr>,
+    pub kind: ExpressionKind<'func, M, F>,
+}
+
+#[derive(Debug)]
+pub enum ExpressionKind<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+{
+    Add(Box<BinaryExpression<'func, M, F>>),
+    Sub(Box<BinaryExpression<'func, M, F>>),
+    And(Box<BinaryExpression<'func, M, F>>),
+    Xor(Box<BinaryExpression<'func, M, F>>),
+    Lsl(Box<BinaryExpression<'func, M, F>>),
+    Lsr(Box<BinaryExpression<'func, M, F>>),
+    CmpE(Box<BinaryExpression<'func, M, F>>),
     Reg(LowLevelILRegisterKind<bn::CoreRegister>),
     RegSsa(LowLevelILSSARegisterKind<bn::CoreRegister>),
     Const(u64),
     ConstPtr(u64),
-    Unknown(LowLevelILExpression<'a, M, F, bn::ValueExpr>),
+    Unknown(LowLevelILExpression<'func, M, F, bn::ValueExpr>),
 }
 
-impl<'a, 'b, M, F> From<&'b LowLevelILInstruction<'a, M, F>> for Instruction<'b, M, F>
+impl<'func, M, F> From<LowLevelILInstruction<'func, M, F>> for Instruction<'func, M, F>
 where
     M: bn::FunctionMutability,
     F: bn::FunctionForm,
-    LowLevelILInstruction<'a, M, F>: bn::InstructionHandler<'a, M, F>,
-    LowLevelILExpression<'a, M, F, bn::ValueExpr>: bn::ExpressionHandler<'a, M, F>,
+    LowLevelILInstruction<'func, M, F>: bn::InstructionHandler<'func, M, F>,
+    LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
 {
-    fn from(instr: &'b LowLevelILInstruction<'a, M, F>) -> Self {
+    fn from(instr: LowLevelILInstruction<'func, M, F>) -> Self {
+        Self {
+            kind: InstructionKind::from(instr),
+            inner: instr,
+        }
+    }
+}
+
+impl<'a, 'func, M, F> From<&'a LowLevelILInstruction<'func, M, F>> for Instruction<'func, M, F> 
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILInstruction<'func, M, F>: bn::InstructionHandler<'func, M, F>,
+    LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
+{
+    fn from(instr: &'a LowLevelILInstruction<'func, M, F>) -> Self {
+        instr.clone().into()
+    }
+}
+
+impl<'func, M, F> From<LowLevelILInstruction<'func, M, F>>
+    for InstructionKind<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILInstruction<'func, M, F>: bn::InstructionHandler<'func, M, F>,
+    LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
+{
+    fn from(instr: LowLevelILInstruction<'func, M, F>) -> Self {
         use LowLevelILExpressionKind as ExpressionKind;
         use LowLevelILInstructionKind as Kind;
         match instr.kind() {
@@ -101,13 +166,13 @@ where
                 operation.false_target(),
             ),
             Kind::SetReg(operation) => {
-                Instruction::SetReg(operation.dest_reg(), operation.source_expr().into())
+                InstructionKind::SetReg(operation.dest_reg(), operation.source_expr().into())
             }
             Kind::SetRegSsa(operation) => {
-                Instruction::SetRegSsa(operation.dest_reg(), operation.source_expr().into())
+                InstructionKind::SetRegSsa(operation.dest_reg(), operation.source_expr().into())
             }
-            Kind::Call(operation) => Instruction::Call(operation.target().into()),
-            Kind::TailCall(operation) => Instruction::TailCall(operation.target().into()),
+            Kind::Call(operation) => InstructionKind::Call(operation.target().into()),
+            Kind::TailCall(operation) => InstructionKind::TailCall(operation.target().into()),
             Kind::CallSsa(operation) => {
                 let ExpressionKind::CallParamSsa(params) = operation.param_expr().kind() else {
                     panic!(
@@ -115,9 +180,9 @@ where
                         operation.param_expr().kind()
                     );
                 };
-                Instruction::CallSsa(
+                InstructionKind::CallSsa(
                     operation.target().into(),
-                    params.param_exprs().into_iter().map(Into::into).collect(),
+                    params.param_exprs().into_iter().map(|e| e.into()).collect(),
                 )
             }
             Kind::TailCallSsa(operation) => {
@@ -127,57 +192,83 @@ where
                         operation.param_expr().kind()
                     );
                 };
-                Instruction::TailCallSsa(
+                InstructionKind::TailCallSsa(
                     operation.target().into(),
-                    params.param_exprs().into_iter().map(Into::into).collect(),
+                    params.param_exprs().into_iter().map(|e| e.into()).collect(),
                 )
             }
             Kind::RegPhi(operation) => {
                 let source_regs = operation.source_regs();
-                Instruction::RegPhi(operation.dest_reg(), source_regs)
+                InstructionKind::RegPhi(operation.dest_reg(), source_regs)
             }
-            Kind::Goto(operation) => Instruction::Goto(operation.target()),
-            Kind::Jump(operation) => Instruction::Jump(operation.target().into()),
-            _ => Instruction::Unknown(instr),
+            Kind::Goto(operation) => InstructionKind::Goto(operation.target()),
+            Kind::Jump(operation) => InstructionKind::Jump(operation.target().into()),
+            _ => InstructionKind::Unknown(instr),
         }
     }
 }
 
-impl<'a, M, F> From<LowLevelILExpression<'a, M, F, bn::ValueExpr>> for Expression<'a, M, F>
+impl<'a, 'func, M, F> From<&'a LowLevelILInstruction<'func, M, F>>
+    for InstructionKind<'func, M, F>
 where
     M: bn::FunctionMutability,
     F: bn::FunctionForm,
-    LowLevelILExpression<'a, M, F, bn::ValueExpr>: bn::ExpressionHandler<'a, M, F>,
+    LowLevelILInstruction<'func, M, F>: bn::InstructionHandler<'func, M, F>,
+    LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
 {
-    fn from(expr: LowLevelILExpression<'a, M, F, bn::ValueExpr>) -> Self {
+    fn from(instr: &'a LowLevelILInstruction<'func, M, F>) -> Self {
+        instr.clone().into()
+    }
+}
+
+impl<'a, 'func, M, F> From<LowLevelILExpression<'func, M, F, bn::ValueExpr>>
+    for Expression<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
+{
+    fn from(expr: LowLevelILExpression<'func, M, F, bn::ValueExpr>) -> Self {
+        Self { inner: expr, kind: ExpressionKind::from(expr) }
+    }
+}
+
+impl<'a, 'func, M, F> From<LowLevelILExpression<'func, M, F, bn::ValueExpr>>
+    for ExpressionKind<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
+{
+    fn from(expr: LowLevelILExpression<'func, M, F, bn::ValueExpr>) -> Self {
         use LowLevelILExpressionKind as Kind;
         match expr.kind() {
-            Kind::Add(operation) => Expression::Add(Box::new(BinaryExpression::from(operation))),
-            Kind::Sub(operation) => Expression::Sub(Box::new(BinaryExpression::from(operation))),
-            Kind::And(operation) => Expression::And(Box::new(BinaryExpression::from(operation))),
-            Kind::Xor(operation) => Expression::Xor(Box::new(BinaryExpression::from(operation))),
-            Kind::Lsl(operation) => Expression::Lsl(Box::new(BinaryExpression::from(operation))),
-            Kind::Lsr(operation) => Expression::Lsr(Box::new(BinaryExpression::from(operation))),
-            Kind::CmpE(operation) => Expression::CmpE(Box::new(BinaryExpression(
+            Kind::Add(operation) => ExpressionKind::Add(Box::new(operation.into())),
+            Kind::Sub(operation) => ExpressionKind::Sub(Box::new(operation.into())),
+            Kind::And(operation) => ExpressionKind::And(Box::new(operation.into())),
+            Kind::Xor(operation) => ExpressionKind::Xor(Box::new(operation.into())),
+            Kind::Lsl(operation) => ExpressionKind::Lsl(Box::new(operation.into())),
+            Kind::Lsr(operation) => ExpressionKind::Lsr(Box::new(operation.into())),
+            Kind::CmpE(operation) => ExpressionKind::CmpE(Box::new(BinaryExpression(
                 operation.left().into(),
                 operation.right().into(),
             ))),
-            Kind::Const(operation) => Expression::Const(operation.value()),
-            Kind::ConstPtr(operation) => Expression::ConstPtr(operation.value()),
-            Kind::Reg(operation) => Expression::Reg(operation.source_reg()),
-            Kind::RegSsa(operation) => Expression::RegSsa(operation.source_reg()),
-            _ => Expression::Unknown(expr),
+            Kind::Const(operation) => ExpressionKind::Const(operation.value()),
+            Kind::ConstPtr(operation) => ExpressionKind::ConstPtr(operation.value()),
+            Kind::Reg(operation) => ExpressionKind::Reg(operation.source_reg()),
+            Kind::RegSsa(operation) => ExpressionKind::RegSsa(operation.source_reg()),
+            _ => ExpressionKind::Unknown(expr),
         }
     }
 }
 
-impl<'a, M, F> From<bn::Operation<'a, M, F, bn::BinaryOp>> for BinaryExpression<'a, M, F>
+impl<'func, M, F> From<bn::Operation<'func, M, F, bn::BinaryOp>> for BinaryExpression<'func, M, F>
 where
     M: bn::FunctionMutability,
     F: bn::FunctionForm,
-    LowLevelILExpression<'a, M, F, bn::ValueExpr>: bn::ExpressionHandler<'a, M, F>,
+    LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
 {
-    fn from(operation: bn::Operation<'a, M, F, bn::BinaryOp>) -> Self {
+    fn from(operation: bn::Operation<'func, M, F, bn::BinaryOp>) -> Self {
         Self(operation.left().into(), operation.right().into())
     }
 }
