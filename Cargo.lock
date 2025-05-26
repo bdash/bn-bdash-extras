@@ -62,10 +62,20 @@ name = "bn-bdash-extras"
 version = "0.1.0"
 dependencies = [
  "binaryninja",
+ "bn-bdash-extras-macros",
  "itertools",
  "log",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "bn-bdash-extras-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
