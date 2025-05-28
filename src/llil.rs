@@ -20,7 +20,7 @@ mod bn {
         low_level_il::{
             expression::{ExpressionHandler, ValueExpr},
             function::{FunctionForm, FunctionMutability},
-            instruction::InstructionHandler,
+            instruction::{LowLevelILInstructionKind, InstructionHandler},
             operation::{BinaryOp, Operation},
         },
     };
@@ -323,6 +323,26 @@ where
 {
     fn from(operation: bn::Operation<'func, M, F, bn::BinaryOp>) -> Self {
         Self(operation.left().into(), operation.right().into())
+    }
+}
+
+impl<'func, M, F> Instruction<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+    LowLevelILInstruction<'func, M, F>: bn::InstructionHandler<'func, M, F>,
+{
+    #[must_use]
+    pub fn size(&self) -> Option<usize> {
+        use bn::LowLevelILInstructionKind as Kind;
+        match self.inner.kind() {
+            Kind::SetReg(ref op) => Some(op.size()),
+            Kind::SetRegSsa(ref op) => Some(op.size()),
+            Kind::Store(ref op) => Some(op.size()),
+            Kind::StoreSsa(ref op) => Some(op.size()),
+            Kind::Push(ref op) => Some(op.size()),
+            _ => None,
+        }
     }
 }
 
