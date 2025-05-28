@@ -81,10 +81,12 @@ where
     F: bn::FunctionForm,
     LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
 {
+    #[must_use]
     pub fn kinds(&self) -> (ExpressionKind<'func, M, F>, ExpressionKind<'func, M, F>) {
         (self.0.kind.clone(), self.1.kind.clone())
     }
 
+    #[must_use]
     pub fn inners(
         &self,
     ) -> (
@@ -124,7 +126,7 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
+            inner: self.inner,
             kind: self.kind.clone(),
         }
     }
@@ -169,7 +171,7 @@ where
             ExpressionKind::RegSsa(reg) => ExpressionKind::RegSsa(*reg),
             ExpressionKind::Const(value) => ExpressionKind::Const(*value),
             ExpressionKind::ConstPtr(value) => ExpressionKind::ConstPtr(*value),
-            ExpressionKind::Unknown(expr) => ExpressionKind::Unknown(expr.clone()),
+            ExpressionKind::Unknown(expr) => ExpressionKind::Unknown(*expr),
         }
     }
 }
@@ -197,7 +199,7 @@ where
     LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
 {
     fn from(instr: &'a LowLevelILInstruction<'func, M, F>) -> Self {
-        instr.clone().into()
+        (*instr).into()
     }
 }
 
@@ -234,7 +236,7 @@ where
                 };
                 InstructionKind::CallSsa(
                     operation.target().into(),
-                    params.param_exprs().into_iter().map(|e| e.into()).collect(),
+                    params.param_exprs().into_iter().map(Into::into).collect(),
                 )
             }
             Kind::TailCallSsa(operation) => {
@@ -246,7 +248,7 @@ where
                 };
                 InstructionKind::TailCallSsa(
                     operation.target().into(),
-                    params.param_exprs().into_iter().map(|e| e.into()).collect(),
+                    params.param_exprs().into_iter().map(Into::into).collect(),
                 )
             }
             Kind::RegPhi(operation) => {
@@ -268,12 +270,11 @@ where
     LowLevelILExpression<'func, M, F, bn::ValueExpr>: bn::ExpressionHandler<'func, M, F>,
 {
     fn from(instr: &'a LowLevelILInstruction<'func, M, F>) -> Self {
-        instr.clone().into()
+        (*instr).into()
     }
 }
 
-impl<'a, 'func, M, F> From<LowLevelILExpression<'func, M, F, bn::ValueExpr>>
-    for Expression<'func, M, F>
+impl<'func, M, F> From<LowLevelILExpression<'func, M, F, bn::ValueExpr>> for Expression<'func, M, F>
 where
     M: bn::FunctionMutability,
     F: bn::FunctionForm,
@@ -287,7 +288,7 @@ where
     }
 }
 
-impl<'a, 'func, M, F> From<LowLevelILExpression<'func, M, F, bn::ValueExpr>>
+impl<'func, M, F> From<LowLevelILExpression<'func, M, F, bn::ValueExpr>>
     for ExpressionKind<'func, M, F>
 where
     M: bn::FunctionMutability,
@@ -374,9 +375,7 @@ pub fn is_same_register<R: bn::Register>(
 }
 
 /// Checks whether a given `LowLevelILSSARegisterKind` is a full register.
-pub fn is_full_register<R: bn::Register>(
-    reg: &LowLevelILSSARegisterKind<R>,
-) -> bool {
+pub fn is_full_register<R: bn::Register>(reg: &LowLevelILSSARegisterKind<R>) -> bool {
     matches!(reg, LowLevelILSSARegisterKind::Full { .. })
 }
 
