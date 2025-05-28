@@ -17,10 +17,11 @@ use binaryninja::low_level_il::{
 mod bn {
     pub use binaryninja::{
         architecture::CoreRegister,
+        architecture::Register,
         low_level_il::{
             expression::{ExpressionHandler, ValueExpr},
             function::{FunctionForm, FunctionMutability},
-            instruction::{LowLevelILInstructionKind, InstructionHandler},
+            instruction::{InstructionHandler, LowLevelILInstructionKind},
             operation::{BinaryOp, Operation},
         },
     };
@@ -343,6 +344,53 @@ where
             Kind::Push(ref op) => Some(op.size()),
             _ => None,
         }
+    }
+}
+
+/// Checks if two `LowLevelILSSARegisterKind` instances represent the same register, irrespective of their version.
+pub fn is_same_register<R: bn::Register>(
+    this: &LowLevelILSSARegisterKind<R>,
+    other: &LowLevelILSSARegisterKind<R>,
+) -> bool {
+    match (this, other) {
+        (
+            LowLevelILSSARegisterKind::Full { kind: k1, .. },
+            LowLevelILSSARegisterKind::Full { kind: k2, .. },
+        ) => k1 == k2,
+        (
+            LowLevelILSSARegisterKind::Partial {
+                full_reg: fr1,
+                partial_reg: pr1,
+                ..
+            },
+            LowLevelILSSARegisterKind::Partial {
+                full_reg: fr2,
+                partial_reg: pr2,
+                ..
+            },
+        ) => fr1 == fr2 && pr1 == pr2,
+        _ => false,
+    }
+}
+
+/// Checks whether a given `LowLevelILSSARegisterKind` is a full register.
+pub fn is_full_register<R: bn::Register>(
+    reg: &LowLevelILSSARegisterKind<R>,
+) -> bool {
+    matches!(reg, LowLevelILSSARegisterKind::Full { .. })
+}
+
+/// Extract the underlying `LowLevelILRegisterKind` from a `LowLevelILSSARegisterKind` if it is a full register.
+/// If not, logs a warning and returns `None`.
+pub fn require_full_register<R: bn::Register, T: std::fmt::Debug>(
+    reg: LowLevelILSSARegisterKind<R>,
+    ctxt: &T,
+) -> Option<LowLevelILRegisterKind<R>> {
+    if let LowLevelILSSARegisterKind::Full { kind, .. } = reg {
+        Some(kind)
+    } else {
+        log::warn!("Expected register used in {ctxt:?} to be a full SSA register, got {reg:?}");
+        None
     }
 }
 
