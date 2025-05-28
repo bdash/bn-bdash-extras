@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Expr, Pat, Token,
+    Expr, Pat, Stmt, Token,
     parse::{Parse, ParseStream},
     parse_macro_input,
 };
@@ -37,11 +37,29 @@ pub fn try_let_instr(input: TokenStream) -> TokenStream {
     let idents = collect_pattern_idents(&pat);
     let tuple = quote! { ( #(#idents),* ) };
 
+    // If the fallback block has a single statement, unwrap it to avoid unnecessary braces
+    let fallback_expr = if fallback.stmts.len() == 1 {
+        match &fallback.stmts[0] {
+            Stmt::Expr(expr, None) => expr.clone(),
+            _ => Expr::Block(syn::ExprBlock {
+                attrs: vec![],
+                label: None,
+                block: fallback,
+            }),
+        }
+    } else {
+        Expr::Block(syn::ExprBlock {
+            attrs: vec![],
+            label: None,
+            block: fallback,
+        })
+    };
+
     let expanded = quote! {
-        let #tuple = ::bn_bdash_extras::llil::macros::match_instr!(
+        let #tuple = ::bn_bdash_extras::llil::match_instr!(
             #expr,
             #pat => #tuple,
-            _ => #fallback
+            _ => #fallback_expr
         );
     };
     expanded.into()

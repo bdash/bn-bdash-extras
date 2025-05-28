@@ -1,0 +1,14 @@
+error: non-exhaustive patterns: LLIL instruction patterns not covered
+                       = help: ensure that all possible cases are covered by adding a wildcard pattern: `_ => { ... }`
+                       = note: the matched value is of type `llil::InstructionKind`
+  --> tests/compile-fail/missing_wildcard.rs:16:5
+   |
+16 | /     match_instr! {
+17 | |         instr,
+18 | |         Call(_) => Some("call"),
+19 | |         SetRegSsa(_, _) => Some("set reg ssa")
+20 | |         // Missing wildcard arm - should produce a clear error
+21 | |     }
+   | |_____^
+   |
+   = note: this error originates in the macro `match_instr` (in Nightly builds, run with -Z macro-backtrace for more info)

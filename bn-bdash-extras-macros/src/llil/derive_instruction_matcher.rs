@@ -134,7 +134,7 @@ pub fn instr_match_derive(input: TokenStream) -> TokenStream {
             type Error = ();
             fn try_from(instr: &::binaryninja::low_level_il::instruction::LowLevelILInstruction<'func, M, F>) -> Result<Self, Self::Error> {
                 let instr = *instr;
-                let ( #(#bindings),* ) = ::bn_bdash_extras::llil::macros::match_instr!(
+                let ( #(#bindings),* ) = ::bn_bdash_extras::llil::match_instr!(
                     instr,
                     #pattern => ( #(#bindings),* ),
                     _ => return Err(()),

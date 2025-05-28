@@ -1,0 +1,5 @@
+error: Invalid @ binding pattern
+  --> tests/compile-fail/invalid_binding_pattern.rs:19:9
+   |
+19 |         binding @ _ => Some("invalid"),
+   |         ^^^^^^^^^^^

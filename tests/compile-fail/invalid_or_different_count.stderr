@@ -1,0 +1,5 @@
+error: OR pattern alternative 2 binds 0 variables, but the first alternative binds 1
+  --> tests/compile-fail/invalid_or_different_count.rs:19:24
+   |
+19 |         Call(target) | TailCall(_) => {
+   |                        ^^^^^^^^^^^

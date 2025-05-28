@@ -1,0 +1,5 @@
+error: Unsupported pattern type for instruction matching
+  --> tests/compile-fail/array_pattern.rs:19:9
+   |
+19 |         [a, b] => Some("array"),
+   |         ^^^^^^

@@ -1,0 +1,5 @@
+error: Complex paths not supported in instruction patterns
+  --> tests/compile-fail/malformed_pattern.rs:19:14
+   |
+19 |         Call(std::collections::HashMap::new(address)) => Some("malformed"),
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

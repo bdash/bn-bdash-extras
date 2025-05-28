@@ -9,9 +9,9 @@
 use std::convert::Into;
 
 use binaryninja::low_level_il::{
-    LowLevelILRegisterKind, LowLevelILSSARegisterKind,
     expression::{ExpressionHandler as _, LowLevelILExpression, LowLevelILExpressionKind},
     instruction::{InstructionHandler as _, LowLevelILInstruction, LowLevelILInstructionKind},
+    LowLevelILRegisterKind, LowLevelILSSARegisterKind,
 };
 
 mod bn {
@@ -393,300 +393,146 @@ pub fn require_full_register<R: bn::Register, T: std::fmt::Debug>(
     }
 }
 
-#[cfg(feature = "macros")]
-pub mod macros {
-    #[doc(inline)]
-    pub use crate::__match_instr as match_instr;
+/// A procedural macro for matching and destructuring of instructions and their expressions.
+///
+/// Provides pattern matching with support for nested expressions, variable bindings with `@`,
+/// OR patterns, and guard conditions.
+///
+/// # Examples
+/// ```no_run
+/// # use bn_bdash_extras::llil::match_instr;
+/// # use bn_bdash_extras::llil::{Instruction, ExpressionKind::*};
+/// # let instr: binaryninja::low_level_il::instruction::LowLevelILInstruction<
+/// #     binaryninja::low_level_il::function::Mutable,
+/// #     binaryninja::low_level_il::function::SSA> = todo!();
+/// match_instr!{
+///     instr,
+///     // Basic patterns
+///     CallSsa(ConstPtr(address), _) => println!("Direct call to {:#x}", address),
+///     
+///     // Variable bindings and guards
+///     instr @ SetRegSsa(dest, add @ Add(RegSsa(src), Const(value))) if value > 10 => {
+///         println!(
+///             "Increment of {src:?} by {value} > 10 at {:#x} (dest={dest:?}, add={add:?})",
+///             instr.address(),
+///         );
+///     },
+///     
+///     // OR patterns
+///     CallSsa(_, _) | TailCallSsa(_, _) => println!("Function call"),
+///     
+///     _ => {}
+/// };
+/// ```
+#[doc(inline)]
+pub use bn_bdash_extras_macros::match_instr;
 
-    /// Macro for pattern matching and destructuring of instructions and their expressions.
-    ///
-    /// `try_let_instr!` allows you to match a [`LowLevelILInstruction`][binaryninja::low_level_il::instruction::LowLevelILInstruction]
-    /// against a single pattern, binding variables if the match succeeds and executing the `else` branch if the match fails.
-    /// It's analogous to `let-else` syntax in Rust, but allows matching through expressions in a single step.
-    /// This is useful for writing concise and readable instruction-matching code.
-    ///
-    /// # Example
-    /// ```ignore
-    /// try_let_instr!{
-    ///     let SetRegSsa(dest, Lsr(RegSsa(source), Const(5))) = instr else { return None }
-    /// }
-    /// ```
-    ///
-    /// This expands to a match on `instr`, binding `dest` and `source` if the pattern matches,
-    /// or returning `None` if it does not.
-    pub use bn_bdash_extras_macros::try_let_instr;
+/// Macro for pattern matching and destructuring of instructions and their expressions.
+///
+/// `try_let_instr!` allows you to match a [`LowLevelILInstruction`][binaryninja::low_level_il::instruction::LowLevelILInstruction]
+/// against a single pattern, binding variables if the match succeeds and executing the `else` branch if the match fails.
+/// It's analogous to `let-else` syntax in Rust, but allows matching through expressions in a single step.
+/// This is useful for writing concise and readable instruction-matching code.
+///
+/// # Example
+/// ```no_run
+/// # use bn_bdash_extras::llil::try_let_instr;
+/// # use bn_bdash_extras::llil::{Instruction, ExpressionKind::*};
+/// # fn example<'func, M, F>(
+/// #     instr: binaryninja::low_level_il::instruction::LowLevelILInstruction<'func, M, F>,
+/// # ) -> Option<()> where
+/// #     M: binaryninja::low_level_il::function::FunctionMutability,
+/// #     F: binaryninja::low_level_il::function::FunctionForm,
+/// #     binaryninja::low_level_il::instruction::LowLevelILInstruction<'func, M, F>:
+/// #         binaryninja::low_level_il::instruction::InstructionHandler<'func, M, F>,
+/// #     binaryninja::low_level_il::expression::LowLevelILExpression<'func, M, F, binaryninja::low_level_il::expression::ValueExpr>:
+/// #         binaryninja::low_level_il::expression::ExpressionHandler<'func, M, F> {
+/// try_let_instr!{
+///     let SetRegSsa(dest, Lsr(RegSsa(source), Const(5))) = instr else { return None }
+/// }
+/// # Some(())
+/// # }
+/// ```
+///
+/// This expands to a match on `instr`, binding `dest` and `source` if the pattern matches,
+/// or returning `None` if it does not.
+#[doc(inline)]
+pub use bn_bdash_extras_macros::try_let_instr;
 
-    /// Derive macro for implementing instruction pattern matching on structs.
-    ///
-    /// This macro allows you to annotate a struct with a `#[pattern(...)]` attribute,
-    /// specifying a Rust pattern that matches a [`LowLevelILInstruction`][binaryninja::low_level_il::instruction::LowLevelILInstruction].
-    ///
-    /// The macro generates an implementation of the [`TryFrom`] trait for the struct, converting from
-    /// [`LowLevelILInstruction<'func, M, F>`][binaryninja::low_level_il::instruction::LowLevelILInstruction] enabling ergonomic and
-    /// type-safe matching and extraction of instructions and their subexpressions.
-    ///
-    /// # Example
-    /// ```ignore
-    /// #[derive(InstrMatch)]
-    /// #[pattern(instr @ SetRegSsa(dest, Lsr(RegSsa(source), Const(5))))]
-    /// struct SetToLsrBy5<'func, M, F>
-    ///  where
-    ///      M: binaryninja::low_level_il::function::FunctionMutability,
-    ///      F: binaryninja::low_level_il::function::FunctionForm,
-    /// {
-    ///     instr: LowLevelILInstruction<'func, M, F>,
-    ///     dest: LowLevelILSSARegisterKind<CoreRegister>,
-    ///     source: LowLevelILSSARegisterKind<CoreRegister>,
-    /// }
-    /// ```
-    ///
-    /// The struct fields must correspond to the bindings in the pattern.
-    ///
-    /// If the struct binds to the instruction itself via `binding @`, the struct must be defined
-    /// with the necessary generic parameters for the `LowLevelILInstruction` it captures.
-    /// They MUST use the names `'func`, `M`, and `F` to avoid conflicting with the generated implementations.
-    pub use bn_bdash_extras_macros::InstrMatch;
-
-    /// Macro for ergonomic pattern matching on instructions and their subexpressions.
-    ///
-    /// `match_instr!` allows matching on the structure of a [`LowLevelILInstruction`][binaryninja::low_level_il::instruction::LowLevelILInstruction]
-    /// using Rust patterns that correspond to the enum variants of [`InstructionKind`][super::InstructionKind] and
-    /// [`ExpressionKind`][super::ExpressionKind].
-    ///
-    /// Unlike a normal Rust `match`, this macro allows matching an instruction and its subexpressions
-    /// in a single pattern, rather than requiring a multi-statement destructuring process.
-    /// This enables concise, readable, and expressive matching for complex instruction trees.
-    ///
-    /// # Example
-    /// ```ignore
-    /// match_instr! {
-    ///     instr,
-    ///     SetRegSsa(dest, Lsr(RegSsa(source), Const(5))) => {
-    ///         // handle logical shift right by 5
-    ///         ...
-    ///     },
-    ///     SetRegSsa(_, RegSsa(r)) => {
-    ///         // handle special register
-    ///         ...
-    ///     },
-    ///     SetRegSsa(dest, Lsr(RegSsa(source), Const(value))) if value > 8 => {
-    ///        // handle large logical shift right
-    ///       ...
-    ///     },
-    ///     Goto(target) => {
-    ///         // handle goto
-    ///         ...
-    ///     },
-    ///     _ => {
-    ///         // fallback
-    ///         ...
-    ///     },
-    /// }
-    /// ```
-    #[doc(hidden)]
-    #[macro_export]
-    macro_rules! __match_instr {
-    // Entry point: evaluate the expression once, bind to __val, then dispatch to @internal
-    ($Expr:expr, $($rest:tt)*) => {{
-        let __val = $crate::llil::InstructionKind::from($Expr);
-        let __orig = $Expr;
-        $crate::__match_instr!(@internal __val, __orig, $($rest)*)
-    }};
-
-    // 1) Final wildcard arm
-    (@internal $val:ident, $orig:ident, _ => $default:expr $(,)?) => {
-        $default
-    };
-
-    // 2a) @ binding with Instr(instr, Expr(lhs, rhs)) if guard =>
-    (@internal $val:ident, $orig:ident,
-        $bind:ident @ $Inst:ident($i_pat:pat, $Expr:ident($lpat:pat, $rpat:pat)) if $user_guard:expr => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.kinds() {
-                    ($lpat, $rpat) if $user_guard => {
-                        let $bind = $orig;
-                        $body
-                    },
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 2b) @ binding with Instr(instr, Expr(lhs, rhs)) =>
-    (@internal $val:ident, $orig:ident,
-        $bind:ident @ $Inst:ident($i_pat:pat, $Expr:ident($lpat:pat, $rpat:pat)) => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.kinds() {
-                    ($lpat, $rpat) => {
-                        let $bind = $orig;
-                        $body
-                    },
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 2c) @ binding with Instr(instr, Expr(expr)) if guard =>
-    (@internal $val:ident, $orig:ident,
-        $bind:ident @ $Inst:ident($i_pat:pat, $Expr:ident($opat:pat)) if $user_guard:expr => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.clone() {
-                    $opat if $user_guard => {
-                        let $bind = $orig;
-                        $body
-                    },
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 2d) @ binding with Instr(instr, Expr(expr)) =>
-    (@internal $val:ident, $orig:ident,
-        $bind:ident @ $Inst:ident($i_pat:pat, $Expr:ident($opat:pat)) => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.clone() {
-                    $opat => {
-                        let $bind = $orig;
-                        $body
-                    },
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 2e) @ binding with Instr(instr) if guard =>
-    (@internal $val:ident, $orig:ident,
-        $bind:ident @ $Inst:ident($($ppats:pat),*) if $user_guard:expr => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($($ppats),*) if $user_guard => {
-                let $bind = $orig;
-                $body
-            },
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 2f) @ binding with Instr(instr) =>
-    (@internal $val:ident, $orig:ident,
-        $bind:ident @ $Inst:ident($($ppats:pat),*) => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($($ppats),*) => {
-                let $bind = $orig;
-                $body
-            },
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 3a) Instr(instr, Expr(lhs, rhs)) if guard =>
-    (@internal $val:ident, $orig:ident,
-        $Inst:ident($i_pat:pat, $Expr:ident($lpat:pat, $rpat:pat)) if $user_guard:expr => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.kinds() {
-                    ($lpat, $rpat) if $user_guard => $body,
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 3b) Instr(instr, Expr(lhs, rhs)) =>
-    (@internal $val:ident, $orig:ident,
-        $Inst:ident($i_pat:pat, $Expr:ident($lpat:pat, $rpat:pat)) => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.kinds() {
-                    ($lpat, $rpat) => $body,
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 3c) Instr(instr, Expr(expr)) if guard =>
-    (@internal $val:ident, $orig:ident,
-        $Inst:ident($i_pat:pat, $Expr:ident($opat:pat)) if $user_guard:expr => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.clone() {
-                    $opat if $user_guard => $body,
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 3d) Instr(instr, Expr(expr)) =>
-    (@internal $val:ident, $orig:ident,
-        $Inst:ident($i_pat:pat, $Expr:ident($opat:pat)) => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($i_pat, $crate::llil::Expression { kind: $crate::llil::ExpressionKind::$Expr(ref inner), .. }) => {
-                match inner.clone() {
-                    $opat => $body,
-                    _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-                }
-            }
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 3e) Instr(instr) if guard =>
-    (@internal $val:ident, $orig:ident,
-        $Inst:ident($($ppats:pat),*) if $user_guard:expr => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($($ppats),*) if $user_guard => $body,
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-    // 3f) Instr(instr) =>
-    (@internal $val:ident, $orig:ident,
-        $Inst:ident($($ppats:pat),*) => $body:expr,
-        $($rest:tt)*
-    ) => {
-        match $val {
-            $crate::llil::InstructionKind::$Inst($($ppats),*) => $body,
-            _ => $crate::__match_instr!(@internal $val, $orig, $($rest)*),
-        }
-    };
-
-}
-}
+/// Derive macro for implementing instruction pattern matching on structs.
+///
+/// This macro allows you to annotate a struct with a `#[pattern(...)]` attribute,
+/// specifying a Rust pattern that matches a [`LowLevelILInstruction`].
+///
+/// An implementation of the [`TryFrom`] trait will be generated to support converting
+/// from [`LowLevelILInstruction`]. This enables ergonomic and type-safe matching and
+/// extraction of instructions and their subexpressions.
+///
+/// # Details
+/// Bindings in the pattern correspond to the struct's fields. Each binding must have a matching field
+/// of the appropriate type.
+/// 
+/// Fields are initialized using [`Into`] conversions from the matched instruction and expressions.
+/// This allows you to bind an expression to a field of type [`Expression`], [`ExpressionKind`], or
+/// [`LowLevelILExpression`] depending on your needs, and similarly for the instruction itself.
+///
+/// If the struct binds to an instruction or expression type that requires generic parameters,
+/// struct must be defined with the necessary generic parameters for the object it captures.
+/// For instructions and expressions this will often be the function mutability and form traits.
+/// These MUST use the names `'func`, `M`, and `F` to avoid conflicting with the generated implementations.
+///
+/// # Example
+/// ```no_run
+/// # use binaryninja::{
+/// #     architecture::CoreRegister,
+/// #     low_level_il::{
+/// #         function::{FunctionForm, FunctionMutability},
+/// #         instruction::LowLevelILInstruction,
+/// #         LowLevelILSSARegisterKind,
+/// #     },
+/// # };
+/// # use bn_bdash_extras::{
+/// #     llil::{
+/// #         BinaryExpression, Expression,
+/// #         ExpressionKind::{self, Const, RegSsa},
+/// #         Instruction,
+/// #         InstrMatch,
+/// #     },
+/// # };
+/// #
+/// #[derive(InstrMatch)]
+/// #[pattern(instr @ SetRegSsa(dest, Lsr(RegSsa(source), Const(5))))]
+/// struct SetToLsrBy5<'func, M, F>
+///  where
+///      M: FunctionMutability,
+///      F: FunctionForm,
+/// {
+///     instr: LowLevelILInstruction<'func, M, F>,
+///     dest: LowLevelILSSARegisterKind<CoreRegister>,
+///     source: LowLevelILSSARegisterKind<CoreRegister>,
+/// }
+/// 
+/// # fn example<'func, M, F>(
+/// #     instr: LowLevelILInstruction<'func, M, F>,
+/// # ) where
+/// #     M: binaryninja::low_level_il::function::FunctionMutability,
+/// #     F: binaryninja::low_level_il::function::FunctionForm,
+/// #     LowLevelILInstruction<'func, M, F>: binaryninja::low_level_il::instruction::InstructionHandler<'func, M, F>,
+/// #     binaryninja::low_level_il::expression::LowLevelILExpression<'func, M, F, binaryninja::low_level_il::expression::ValueExpr>:
+/// #         binaryninja::low_level_il::expression::ExpressionHandler<'func, M, F> {
+/// // Usage:
+/// let match_result = SetToLsrBy5::try_from(instr);
+/// if let Ok(matched) = match_result {
+///     println!(
+///         "Matched SetRegSsa({:?}, Lsr(RegSsa({:?}), Const(5))) at address: {:#x}",
+///         matched.dest, matched.source, matched.instr.address(),
+///     );
+///     // You can now use `matched.instr` and other fields as needed.
+/// } else {
+///     println!("Instruction did not match");
+/// }
+/// # }
+/// ```
+///
+#[doc(inline)]
+pub use bn_bdash_extras_macros::InstrMatch;

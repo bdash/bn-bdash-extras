@@ -1,0 +1,5 @@
+error: OR pattern alternative 2 binds variable 'destination', but the first alternative binds 'target'
+  --> tests/compile-fail/invalid_or_binding.rs:19:24
+   |
+19 |         Call(target) | TailCall(destination) => {
+   |                        ^^^^^^^^^^^^^^^^^^^^^

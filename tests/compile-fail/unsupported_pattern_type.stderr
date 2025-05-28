@@ -1,0 +1,5 @@
+error: Unsupported pattern type for instruction matching
+  --> tests/compile-fail/unsupported_pattern_type.rs:19:9
+   |
+19 |         (a, b, c) => Some("unsupported"),
+   |         ^^^^^^^^^
