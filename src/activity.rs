@@ -7,7 +7,7 @@
 //! # use binaryninja::workflow::{Activity, AnalysisContext, Workflow};
 //! # fn remove_arm64e_pac(ctx: &AnalysisContext) {}
 //! # fn demo(workflow: Workflow) {
-//! let workflow = workflow.clone_to(workflow.name());
+//! let workflow = workflow.clone_to(&workflow.name());
 //! let config = Config::action(
 //!     "bdash.arm64e-pac",
 //!     "Remove explicit arm64e PAC checks",
@@ -17,7 +17,7 @@
 //!     Eligibility::auto()
 //!         .with_predicate(ViewType::In(&["Mach-O", "DSCView", "KCView"]))
 //! );
-//! let activity = Activity::new_with_action(&config, remove_arm64e_pac);
+//! let activity = Activity::new_with_action(&config.to_string(), remove_arm64e_pac);
 //! workflow.register_activity(&activity).unwrap();
 //! # }
 //! ```
