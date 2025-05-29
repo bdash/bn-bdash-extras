@@ -42,7 +42,7 @@ pub fn generate_match_code(expr: Expr, analyzed_arms: Vec<MatchArm>) -> Result<T
     let state_enum = generate_match_state_enum(&match_results)?;
     let result_enum = generate_match_result_enum(&match_results)?;
     let state_machine_cases = generate_state_machine_cases(&match_results, &analyzed_arms)?;
-    let final_match_cases = generate_final_match_cases(&match_results)?;
+    let final_match_cases = generate_final_match_cases(&match_results, &analyzed_arms)?;
 
     Ok(quote! {
         {
@@ -61,6 +61,7 @@ pub fn generate_match_code(expr: Expr, analyzed_arms: Vec<MatchArm>) -> Result<T
 
             match __match_result {
                 #(#final_match_cases)*
+                _ => unreachable!("Guards have already been checked"),
             }
         }
     })
@@ -289,6 +290,10 @@ fn generate_expression_match(
             let rhs_subexpr_bind =
                 generate_subexpr_bind_if_needed(rhs, quote! { #content_var.inners().1 }, "rhs");
 
+            // Strip @ bindings from patterns since we're going to shadow them with let bindings
+            let lhs = strip_at_bindings(lhs);
+            let rhs = strip_at_bindings(rhs);
+
             quote! {
                 match #content_var.kinds() {
                     (#lhs, #rhs) => {
@@ -311,6 +316,23 @@ fn generate_expression_match(
         }
         _ => success_body,
     }
+}
+
+/// Removes @ bindings from patterns when they will be shadowed by let bindings
+fn strip_at_bindings(pat: &Pat) -> TokenStream {
+    match pat {
+        Pat::Ident(ident_pat) if ident_pat.subpat.is_some() => {
+            if let Some((_, subpat)) = &ident_pat.subpat {
+                if let Pat::TupleStruct(_) = subpat.as_ref() {
+                    // Remove the @ binding since we'll create a let binding for it
+                    return quote! { #subpat };
+                }
+            }
+        }
+        _ => {}
+    }
+    // If not an @ binding pattern, return as-is
+    quote! { #pat }
 }
 
 /// Generates setup code for subexpression bindings
@@ -391,16 +413,27 @@ fn needs_ref(pat: &Pat) -> bool {
     }
 }
 
-fn generate_final_match_cases(results: &[MatchResult]) -> Result<Vec<TokenStream>> {
+fn generate_final_match_cases(
+    results: &[MatchResult],
+    arms: &[MatchArm],
+) -> Result<Vec<TokenStream>> {
     let mut cases = Vec::new();
 
-    for result in results {
+    for (result, arm) in results.iter().zip(arms.iter()) {
         let variant_name = format_ident!("Arm{}", result.arm_index);
         let body = &result.body;
 
         let bindings = result.bound_vars.iter().map(|var| &var.ident);
+
+        // Add the guard condition to ensure variables used only in guards are considered "used"
+        let guard = arm
+            .guard
+            .as_ref()
+            .map(|g| quote! { if true || #g })
+            .unwrap_or_default();
+
         cases.push(quote! {
-            __MatchResult::#variant_name { #(#bindings),* } => { #body }
+            __MatchResult::#variant_name { #(#bindings),* } #guard => { #body }
         });
     }
 

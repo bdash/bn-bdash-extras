@@ -66,7 +66,7 @@ where
     result
 }
 
-#[allow(dead_code, unused_variables)]
+#[allow(dead_code)]
 fn extra_binding_test<'func, M, F>(instr: LowLevelILInstruction<'func, M, F>)
 where
     M: FunctionMutability,
@@ -78,12 +78,15 @@ where
         instr,
         instr @ SetRegSsa(dest, add @ Add(reg_ssa @ RegSsa(src), const_ @ Const(1))) => {
             let _ : Instruction<'func, M, F> = instr.into();
+            let _ : LowLevelILSSARegisterKind<CoreRegister> = dest;
             let _ : Expression<'func, M, F> = add.into();
             let _ : Expression<'func, M, F> = reg_ssa.into();
+            let _ : LowLevelILSSARegisterKind<CoreRegister> = src;
             let _ : Expression<'func, M, F> = const_.into();
         },
         instr @ SetRegSsa(dest, reg_ssa @ RegSsa(reg)) => {
             let _ : Instruction<'func, M, F> = instr.into();
+            let _ : LowLevelILSSARegisterKind<CoreRegister> = dest;
             let _ : Expression<'func, M, F> = reg_ssa.into();
             let _ : LowLevelILSSARegisterKind<CoreRegister> = reg;
         },
@@ -92,6 +95,10 @@ where
             let _ : Expression<'func, M, F> = target.into();
             let _ : u64 = address;
         },
+        SetRegSsa(_, Sub(RegSsa(_), Const(c))) if c > 0xff => {
+            // We intentionally don't access `c` here to ensure we don't get a warning about unused variables
+            // when the bound variable is only used in the guard.
+        }
         _ => {}
     };
 }
