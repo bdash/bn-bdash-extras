@@ -11,7 +11,7 @@ pub fn try_let_instr(input: TokenStream) -> TokenStream {
 #[doc(hidden)]
 #[proc_macro_derive(InstrMatch, attributes(pattern))]
 pub fn instr_match_derive(input: TokenStream) -> TokenStream {
-    llil::derive_instruction_matcher::instr_match_derive(input)
+    llil::derive_instr_match::instr_match_derive(input)
 }
 
 #[doc(hidden)]

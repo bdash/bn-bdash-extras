@@ -1,6 +1,6 @@
 use syn::{Pat, visit::Visit};
 
-pub mod derive_instruction_matcher;
+pub mod derive_instr_match;
 pub mod try_let_instr;
 
 #[derive(Default)]
