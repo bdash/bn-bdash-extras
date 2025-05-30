@@ -1,0 +1,4 @@
+# Be a little less aggressive in wrapping struct literals to make most
+# instruction pattern matching fit on one line rather than be spread over 5.
+struct_lit_width = 25
+

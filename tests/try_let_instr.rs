@@ -3,7 +3,7 @@ use binaryninja::low_level_il::{
     function::{FunctionForm, FunctionMutability},
     instruction::{InstructionHandler, LowLevelILInstruction},
 };
-use bn_bdash_extras::llil::{try_let_instr, ExpressionKind::*};
+use bn_bdash_extras::llil::try_let_instr;
 
 #[allow(dead_code, unused_variables)]
 fn compile_test<'func, M, F>(instr: LowLevelILInstruction<'func, M, F>) -> Option<()>

@@ -471,7 +471,7 @@ pub use bn_bdash_extras_macros::try_let_instr;
 /// # Details
 /// Bindings in the pattern correspond to the struct's fields. Each binding must have a matching field
 /// of the appropriate type.
-/// 
+///
 /// Fields are initialized using [`Into`] conversions from the matched instruction and expressions.
 /// This allows you to bind an expression to a field of type [`Expression`], [`ExpressionKind`], or
 /// [`LowLevelILExpression`] depending on your needs, and similarly for the instruction itself.
@@ -511,7 +511,7 @@ pub use bn_bdash_extras_macros::try_let_instr;
 ///     dest: LowLevelILSSARegisterKind<CoreRegister>,
 ///     source: LowLevelILSSARegisterKind<CoreRegister>,
 /// }
-/// 
+///
 /// # fn example<'func, M, F>(
 /// #     instr: LowLevelILInstruction<'func, M, F>,
 /// # ) where

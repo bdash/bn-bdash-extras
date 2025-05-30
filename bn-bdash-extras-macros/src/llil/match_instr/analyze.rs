@@ -29,7 +29,7 @@ pub enum ArgumentPattern {
 #[derive(Debug, Clone)]
 pub struct ExpressionPattern {
     pub type_name: Ident,
-    pub args: Vec<Pat>,
+    pub args: Vec<ArgumentPattern>,
     pub binding: Option<Ident>,
 }
 
@@ -241,7 +241,7 @@ pub fn analyze_expression_pattern(pat: &Pat) -> Result<Option<ExpressionPattern>
                 if let Pat::TupleStruct(nested) = subpat.as_ref() {
                     return Ok(Some(ExpressionPattern {
                         type_name: extract_ident_from_path(&nested.path)?,
-                        args: nested.elems.iter().cloned().collect(),
+                        args: analyze_argument_patterns(&nested.elems)?,
                         binding: Some(binding),
                     }));
                 }
@@ -251,7 +251,7 @@ pub fn analyze_expression_pattern(pat: &Pat) -> Result<Option<ExpressionPattern>
         Pat::TupleStruct(nested) => {
             return Ok(Some(ExpressionPattern {
                 type_name: extract_ident_from_path(&nested.path)?,
-                args: nested.elems.iter().cloned().collect(),
+                args: analyze_argument_patterns(&nested.elems)?,
                 binding: None,
             }));
         }

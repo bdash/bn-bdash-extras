@@ -7,7 +7,7 @@ use binaryninja::{
         LowLevelILSSARegisterKind,
     },
 };
-use bn_bdash_extras::llil::{match_instr, Expression, ExpressionKind::*, Instruction};
+use bn_bdash_extras::llil::{match_instr, Expression, Instruction};
 
 #[allow(dead_code, unused_variables)]
 fn compile_test<'func, M, F>(instr: LowLevelILInstruction<'func, M, F>) -> Option<&'static str>
@@ -21,16 +21,16 @@ where
         instr,
         RegPhi(_, sources) => {
             Some("reg_phi")
-        },
+        }
         SetRegSsa(dest, Add(RegSsa(src), Const(1))) => {
             Some("set reg ssa")
-        },
+        }
         SetRegSsa(dest, Sub(RegSsa(src), Const(c))) if c > 0xffff => {
             Some("set reg ssa sub (big)")
-        },
+        }
         SetRegSsa(dest, Sub(RegSsa(src), Const(c))) if c > 0xff => {
             Some("set reg ssa sub (small)")
-        },
+        }
         TailCall(target) => Some("tail call"),
         Call(ConstPtr(address)) => Some("call"),
         CallSsa(ConstPtr(address), _) => Some("call ssa"),
@@ -38,7 +38,7 @@ where
         TailCallSsa(target @ ConstPtr(address), _) => {
             let _ = target;
             Some("tail call ssa")
-        },
+        }
         _ => return None,
     };
     result
@@ -67,6 +67,29 @@ where
 }
 
 #[allow(dead_code)]
+fn comma_syntax_test<'func, M, F>(instr: LowLevelILInstruction<'func, M, F>)
+where
+    M: FunctionMutability,
+    F: FunctionForm,
+    LowLevelILInstruction<'func, M, F>: InstructionHandler<'func, M, F>,
+    LowLevelILExpression<'func, M, F, ValueExpr>: ExpressionHandler<'func, M, F>,
+{
+    match_instr! {
+        instr,
+        // Block expression - no comma required
+        SetReg(dest, src) => {
+            println!("set reg: {dest:?} = {src:?}");
+        }
+        // Expression - comma required
+        TailCall(_) => println!("tail call"),
+        // Block expression - no comma required
+        _ => {
+            println!("other instruction: {instr:?}");
+        }
+    };
+}
+
+#[allow(dead_code)]
 fn extra_binding_test<'func, M, F>(instr: LowLevelILInstruction<'func, M, F>)
 where
     M: FunctionMutability,
@@ -83,18 +106,18 @@ where
             let _ : Expression<'func, M, F> = reg_ssa.into();
             let _ : LowLevelILSSARegisterKind<CoreRegister> = src;
             let _ : Expression<'func, M, F> = const_.into();
-        },
+        }
         instr @ SetRegSsa(dest, reg_ssa @ RegSsa(reg)) => {
             let _ : Instruction<'func, M, F> = instr.into();
             let _ : LowLevelILSSARegisterKind<CoreRegister> = dest;
             let _ : Expression<'func, M, F> = reg_ssa.into();
             let _ : LowLevelILSSARegisterKind<CoreRegister> = reg;
-        },
+        }
         instr @ Call(target @ ConstPtr(address)) => {
             let _ : Instruction<'func, M, F> = instr.into();
             let _ : Expression<'func, M, F> = target.into();
             let _ : u64 = address;
-        },
+        }
         SetRegSsa(_, Sub(RegSsa(_), Const(c))) if c > 0xff => {
             // We intentionally don't access `c` here to ensure we don't get a warning about unused variables
             // when the bound variable is only used in the guard.

@@ -1,6 +1,7 @@
 use syn::{Pat, visit::Visit};
 
 pub mod derive_instr_match;
+pub mod match_instr;
 pub mod try_let_instr;
 
 #[derive(Default)]

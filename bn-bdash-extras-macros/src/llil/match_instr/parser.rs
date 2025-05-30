@@ -23,9 +23,20 @@ impl Parse for MacroInput {
 
         let mut arms = Vec::new();
         while !input.is_empty() {
-            arms.push(input.parse()?);
-            if input.peek(Token![,]) {
-                input.parse::<Token![,]>()?;
+            let arm: MatchArm = input.parse()?;
+            let needs_comma = match &arm.body {
+                Expr::Block(_) => false,
+                _ => true,
+            };
+
+            arms.push(arm);
+
+            if !input.is_empty() {
+                if input.peek(Token![,]) {
+                    input.parse::<Token![,]>()?;
+                } else if needs_comma {
+                    return Err(input.error("expected `,` after match arm"));
+                }
             }
         }
 
@@ -47,10 +58,6 @@ impl Parse for MatchArm {
         input.parse::<Token![=>]>()?;
         let body: Expr = input.parse()?;
 
-        Ok(MatchArm {
-            pattern,
-            guard,
-            body,
-        })
+        Ok(MatchArm { pattern, guard, body })
     }
 }

@@ -9,13 +9,10 @@ use binaryninja::{
         LowLevelILSSARegisterKind,
     },
 };
-use bn_bdash_extras::{
-    llil::{
-        BinaryExpression, Expression,
-        ExpressionKind::{self, Const, RegSsa},
-        Instruction,
-        InstrMatch,
-    },
+use bn_bdash_extras::llil::{
+    BinaryExpression, Expression,
+    ExpressionKind::{self},
+    InstrMatch, Instruction,
 };
 
 #[derive(InstrMatch, Debug)]
