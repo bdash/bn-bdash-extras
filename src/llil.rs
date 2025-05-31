@@ -1,5 +1,5 @@
 //! More ergonomic matching over Binary Ninja's [`low_level_il`][binaryninja::low_level_il] types
-//! 
+//!
 //! ```
 //! # use bn_bdash_extras::llil::match_instr;
 //! # use bn_bdash_extras::llil::{Instruction, ExpressionKind::*};
@@ -413,6 +413,94 @@ pub fn require_full_register<R: bn::Register, T: std::fmt::Debug>(
     } else {
         log::warn!("Expected register used in {ctxt:?} to be a full SSA register, got {reg:?}");
         None
+    }
+}
+
+/// Trait for extracting the bound value from a matched object.
+///
+/// This trait allows the macro to extract the appropriate value for binding:
+/// - For `Expression` objects: extracts the `.inner` field to get `LowLevelILExpression`
+/// - For other types: returns the value unchanged
+#[doc(hidden)]
+pub trait ExtractBoundValue {
+    type BoundType;
+    fn extract_bound_value(self) -> Self::BoundType;
+}
+
+impl<'func, M, F> ExtractBoundValue for Expression<'func, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+{
+    type BoundType = LowLevelILExpression<'func, M, F, bn::ValueExpr>;
+
+    fn extract_bound_value(self) -> Self::BoundType {
+        self.inner
+    }
+}
+
+// Implementations for specific types that should return themselves
+impl<R: bn::Register> ExtractBoundValue for LowLevelILRegisterKind<R> {
+    type BoundType = Self;
+    fn extract_bound_value(self) -> Self::BoundType {
+        self
+    }
+}
+
+impl<R: bn::Register> ExtractBoundValue for LowLevelILSSARegisterKind<R> {
+    type BoundType = Self;
+    fn extract_bound_value(self) -> Self::BoundType {
+        self
+    }
+}
+
+impl ExtractBoundValue for u64 {
+    type BoundType = Self;
+    fn extract_bound_value(self) -> Self::BoundType {
+        self
+    }
+}
+
+impl<M, F> ExtractBoundValue for LowLevelILExpression<'_, M, F, bn::ValueExpr>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+{
+    type BoundType = Self;
+    fn extract_bound_value(self) -> Self::BoundType {
+        self
+    }
+}
+
+impl<M, F> ExtractBoundValue for Box<BinaryExpression<'_, M, F>>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+{
+    type BoundType = Self;
+    fn extract_bound_value(self) -> Self::BoundType {
+        self
+    }
+}
+
+impl<M, F> ExtractBoundValue for LowLevelILInstruction<'_, M, F>
+where
+    M: bn::FunctionMutability,
+    F: bn::FunctionForm,
+{
+    type BoundType = Self;
+    fn extract_bound_value(self) -> Self::BoundType {
+        self
+    }
+}
+
+impl<T> ExtractBoundValue for Vec<T>
+where
+    T: ExtractBoundValue,
+{
+    type BoundType = Self;
+    fn extract_bound_value(self) -> Self::BoundType {
+        self
     }
 }
 

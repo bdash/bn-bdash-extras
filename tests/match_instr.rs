@@ -122,6 +122,11 @@ where
             // We intentionally don't access `c` here to ensure we don't get a warning about unused variables
             // when the bound variable is only used in the guard.
         }
+        instr @ SetRegSsa(_, Sub(lhs, rhs)) => {
+            let _ : Instruction<'func, M, F> = instr.into();
+            let _ : LowLevelILExpression<'func, M, F, ValueExpr> = lhs;
+            let _ : Expression<'func, M, F> = rhs.into();
+        }
         _ => {}
     };
 }
