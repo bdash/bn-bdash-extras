@@ -1,9 +1,32 @@
-//! Pattern-matchable wrappers around Binary Ninja's `low_level_il` types
+//! More ergonomic matching over Binary Ninja's [`low_level_il`][binaryninja::low_level_il] types
+//! 
+//! ```
+//! # use bn_bdash_extras::llil::match_instr;
+//! # use bn_bdash_extras::llil::{Instruction, ExpressionKind::*};
+//! # let instr: binaryninja::low_level_il::instruction::LowLevelILInstruction<
+//! #     binaryninja::low_level_il::function::Mutable,
+//! #     binaryninja::low_level_il::function::SSA> = todo!();
+//! match_instr!{
+//!     instr,
+//!     // Basic patterns
+//!     CallSsa(ConstPtr(address), _) => println!("Direct call to {:#x}", address),
+//!     
+//!     // Variable bindings and guards
+//!     instr @ SetRegSsa(dest, add @ Add(RegSsa(src), Const(value))) if value > 10 => {
+//!         println!(
+//!             "Increment of {src:?} by {value} > 10 at {:#x} (dest={dest:?}, add={add:?})",
+//!             instr.address(),
+//!         );
+//!     },
+//!     
+//!     // OR patterns
+//!     CallSsa(_, _) | TailCallSsa(_, _) => println!("Function call"),
+//!     
+//!     _ => {}
+//! };
+//! ```
 //!
-//! The medium- and high-level IL representation has a lifted variant that serves this purpose,
-//! but that does not yet exist for low-level IL.
-//!
-//! This currently only supports the operations I've had a need to match against. It will need
+//! NOTE: This currently only supports the operations I've had a need to match against. It will need
 //! to be expanded as it is used for more things.
 
 use std::convert::Into;
@@ -348,7 +371,7 @@ where
     }
 }
 
-/// Checks if two `LowLevelILSSARegisterKind` instances represent the same register, irrespective of their version.
+/// Checks if two [`LowLevelILSSARegisterKind`] instances represent the same register, irrespective of their version.
 pub fn is_same_register<R: bn::Register>(
     this: &LowLevelILSSARegisterKind<R>,
     other: &LowLevelILSSARegisterKind<R>,
@@ -374,13 +397,13 @@ pub fn is_same_register<R: bn::Register>(
     }
 }
 
-/// Checks whether a given `LowLevelILSSARegisterKind` is a full register.
+/// Checks whether a given [`LowLevelILSSARegisterKind`] is a full register.
 pub fn is_full_register<R: bn::Register>(reg: &LowLevelILSSARegisterKind<R>) -> bool {
     matches!(reg, LowLevelILSSARegisterKind::Full { .. })
 }
 
-/// Extract the underlying `LowLevelILRegisterKind` from a `LowLevelILSSARegisterKind` if it is a full register.
-/// If not, logs a warning and returns `None`.
+/// Extract the underlying [`LowLevelILRegisterKind`] from a [`LowLevelILSSARegisterKind`] if it is a full register.
+/// If not, logs a warning and returns [`None`].
 pub fn require_full_register<R: bn::Register, T: std::fmt::Debug>(
     reg: LowLevelILSSARegisterKind<R>,
     ctxt: &T,
@@ -393,7 +416,7 @@ pub fn require_full_register<R: bn::Register, T: std::fmt::Debug>(
     }
 }
 
-/// A procedural macro for matching and destructuring of instructions and their expressions.
+/// `match` style pattern matching and destructuring of instructions and their expressions.
 ///
 /// Provides pattern matching with support for nested expressions, variable bindings with `@`,
 /// OR patterns, and guard conditions.
@@ -427,12 +450,12 @@ pub fn require_full_register<R: bn::Register, T: std::fmt::Debug>(
 #[doc(inline)]
 pub use bn_bdash_extras_macros::match_instr;
 
-/// Macro for pattern matching and destructuring of instructions and their expressions.
+/// `let / else` style pattern matching and destructuring of instructions and their expressions.
 ///
-/// `try_let_instr!` allows you to match a [`LowLevelILInstruction`][binaryninja::low_level_il::instruction::LowLevelILInstruction]
-/// against a single pattern, binding variables if the match succeeds and executing the `else` branch if the match fails.
-/// It's analogous to `let-else` syntax in Rust, but allows matching through expressions in a single step.
-/// This is useful for writing concise and readable instruction-matching code.
+/// `try_let_instr!` allows you to match a [`LowLevelILInstruction`] against a single pattern,
+/// binding variables if the match succeeds and executing the `else` branch if the match fails.
+/// It's analogous to `let-else` syntax in Rust, but allows matching through expressions in a
+/// single step. This is useful for writing concise and readable instruction-matching code.
 ///
 /// # Example
 /// ```no_run
@@ -459,11 +482,10 @@ pub use bn_bdash_extras_macros::match_instr;
 #[doc(inline)]
 pub use bn_bdash_extras_macros::try_let_instr;
 
-/// Derive macro for implementing instruction pattern matching on structs.
+/// Derive macro for mapping instruction pattern matching to structs.
 ///
 /// This macro allows you to annotate a struct with a `#[pattern(...)]` attribute,
 /// specifying a Rust pattern that matches a [`LowLevelILInstruction`].
-///
 /// An implementation of the [`TryFrom`] trait will be generated to support converting
 /// from [`LowLevelILInstruction`]. This enables ergonomic and type-safe matching and
 /// extraction of instructions and their subexpressions.

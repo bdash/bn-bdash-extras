@@ -1,5 +1,5 @@
-//! An assortment of helpers that I've found to be useful when writing
-//! Binary Ninja plug-ins in Rust.
+#![cfg(not(doctest))]
+#![doc = include_str!("../README.md")]
 
 pub mod activity;
 pub mod llil;
