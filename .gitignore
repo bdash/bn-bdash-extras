@@ -1,4 +1,5 @@
 /target
 */target/
 .cargo/config.toml
+.DS_Store
 

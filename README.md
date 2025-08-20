@@ -6,23 +6,7 @@ An assortment of helpers that I've found to be useful when writing Binary Ninja 
 
 ## Activity configuration
 
-Type-safe builders for defining the configuration for an [`Activity`](https://dev-rust.binary.ninja/binaryninja/workflow/struct.Activity.html)
-can be found in the [`activity`](https://bn-bdash-extras.bdash.net.nz/bn_bdash_extras/activity/index.html) module.
-
-```rust
-let workflow = workflow.clone_to(&workflow.name());
-let config = Config::action(
-    "bdash.arm64e-pac",
-    "Remove explicit arm64e PAC checks",
-    "Remove explicit arm64e pointer authentication checks prior to tail calls",
-)
-.with_eligibility(
-    Eligibility::auto()
-        .with_predicate(ViewType::In(&["Mach-O", "DSCView", "KCView"]))
-);
-let activity = Activity::new_with_action(&config.to_string(), remove_arm64e_pac);
-workflow.register_activity(&activity).unwrap();
-```
+Upstreamed! See the [`activity`](https://dev-rust.binary.ninja/binaryninja/workflow/activity/index.html) module.
 
 ## LLIL instruction matching
 
