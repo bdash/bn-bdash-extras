@@ -377,10 +377,9 @@ pub fn is_same_register<R: bn::Register>(
     other: &LowLevelILSSARegisterKind<R>,
 ) -> bool {
     match (this, other) {
-        (
-            LowLevelILSSARegisterKind::Full { kind: k1, .. },
-            LowLevelILSSARegisterKind::Full { kind: k2, .. },
-        ) => k1 == k2,
+        (LowLevelILSSARegisterKind::Full(ssa_reg1), LowLevelILSSARegisterKind::Full(ssa_reg2)) => {
+            ssa_reg1.reg == ssa_reg2.reg
+        }
         (
             LowLevelILSSARegisterKind::Partial {
                 full_reg: fr1,
@@ -392,7 +391,7 @@ pub fn is_same_register<R: bn::Register>(
                 partial_reg: pr2,
                 ..
             },
-        ) => fr1 == fr2 && pr1 == pr2,
+        ) => fr1.reg == fr2.reg && pr1 == pr2,
         _ => false,
     }
 }
@@ -408,8 +407,8 @@ pub fn require_full_register<R: bn::Register, T: std::fmt::Debug>(
     reg: LowLevelILSSARegisterKind<R>,
     ctxt: &T,
 ) -> Option<LowLevelILRegisterKind<R>> {
-    if let LowLevelILSSARegisterKind::Full { kind, .. } = reg {
-        Some(kind)
+    if let LowLevelILSSARegisterKind::Full(ssa_reg) = reg {
+        Some(ssa_reg.reg)
     } else {
         log::warn!("Expected register used in {ctxt:?} to be a full SSA register, got {reg:?}");
         None

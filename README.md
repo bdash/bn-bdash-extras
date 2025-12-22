@@ -4,6 +4,11 @@
 
 An assortment of helpers that I've found to be useful when writing Binary Ninja plug-ins in Rust.
 
+## Supported Binary Ninja versions
+
+The development branch is compatible with Binary Ninja's 5.3-dev releases.
+Support for stable Binary Ninja versions is available on other branches. 
+
 ## Activity configuration
 
 Upstreamed! See the [`activity`](https://dev-rust.binary.ninja/binaryninja/workflow/activity/index.html) module.
